@@ -1,0 +1,38 @@
+version: "3"
+
+services:
+  pg_tileserv:
+    image: geocraftergs/pg_tileserv-alpine:latest
+    build:
+      context: .
+      args:
+        APP_VERSION: ${APP_VERSION}
+    container_name: pg_tileserv
+    env_file:
+      - db.env
+    ports:
+      - 7800:7800
+    networks:
+      - tileserv_network
+
+  web:
+    image: varnish:fresh-alpine
+    volumes:
+      - ./pg_tileserv.vcl:/etc/varnish/default.vcl
+    environment:
+      VARNISH_SIZE: ${CACHE_SIZE}
+    ports:
+      - 80:80
+    networks:
+      - tileserv_network
+    depends_on:
+      - pg_tileserv
+    command: "-p default_ttl=${TTL}"
+
+networks:
+  tileserv_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      - subnet: 10.5.2.0/24
